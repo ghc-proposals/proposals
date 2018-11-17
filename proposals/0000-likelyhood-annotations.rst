@@ -5,34 +5,35 @@ Add Likelyhood Annotations
 .. trac-ticket:: _.
 .. implemented:: _.
 .. highlight:: haskell
-.. header:: This proposal is `discussed at this pull request <https://github.com/ghc-proposals/ghc-proposals/pull/0>`_.
-            **After creating the pull request, edit this file again, update the
-            number in the link, and delete this bold sentence.**
+.. header:: This proposal is `discussed at this pull request <https://github.com/ghc-proposals/ghc-proposals/pull/182>`_.
 .. sectnum::
 .. contents::
 
-Here you should write a short abstract motivating and briefly summarizing the proposed change.
+A lot of performance can be gained by optimizing for hot code paths.
+However GHC currently does not allow users to actually give hints about which code
+paths are hot code paths.
+
+This proposal changes this.
 
 
 Motivation
 ------------
 
 Programmers often know a good deal more about program behaviour than we can currently
-communicate to the compiler, leading to missed optimization opportunities.
+communicate to the compiler. This leads to missed optimization opportunities.
 
-Consider types like
+Consider types like ``data Either a b = Left a | Right b``
 
- - ``data List a = Nil | Cons a (List a)``
-
- - ``data Either a b = Left a | Right b``
-
-We usually want to optimize for the common case.
-Lists are usually not empty.
 Left is often used to represent an exceptional case. Making Right the common case.
+
+Based on this information and given code like ``either f g x`` we might want
+to inline g but not f for example.
+
+The same logic applies to many other cases. For example Lists are rarely empty.
 
 A programmer has this information but no way to communicate this to the compiler.
 
-Communicating this kind of information can inform optimization passes to produce
+Communicating this kind of information can allow optimization passes to produce
 faster code. In particular potential gains include:
  * Avoid inlining into unlikely case alternatives.
  * Produce better code layout.
@@ -41,12 +42,10 @@ faster code. In particular potential gains include:
 Proposed Change Specification
 -----------------------------
 
-We propose a new Pramgma: {-# LIKELY <NUM> #-}
+We propose a new Pramgma: ``{-# LIKELY <NUM> #-}``
 
-This will be useable in two cases with different behaviour:
-
+This will be useable in two kinds of places with different semantics:
  - Simple case expressions.
-
  - Data type definitions of Sum Types.
 
 Uses where the requirements are not satisfied will result in warnings similar to
@@ -56,6 +55,7 @@ Case expressions:
 
 Simple case expressions are case expressions which:
  - Don't contain nested patterns.
+ - Don't use guards.
  - Only match on ADTs or GADT.
 
 Given a simple case expression with n alternatives [A1 .. An],
@@ -63,7 +63,7 @@ with likelyhoods [L1 .. Ln], Ls = sum [L1 .. Ln] GHC will optimize code under th
 the chance for each alternative to be taken is L1/Ls.
 
 In other words alternatives with likelyhood zero are assumed to be almost never taken. (But still correct IF taken!)
-For alternatives with Li > 0 the likelyhood values give the relative frequency of the alternative.
+For alternatives with Li > 0 the likelyhood gives the relative frequency of alternatives.
 
 We give an likelyhood by <Pattern> -> <Pragma> <rhs>. See example below.
 
@@ -113,7 +113,8 @@ Costs and Drawbacks
 -------------------
 This comes with an increase in compiler complexity as one would expect.
 
-I don't expect negative impacts on existing code or users not making use of this feature.
+I don't expect negative impacts on existing code
+or users not making use of this feature.
 
 
 Alternatives
