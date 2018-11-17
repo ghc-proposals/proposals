@@ -74,7 +74,7 @@ If a case doesn't match all possible constructors, then the unmatched constructo
 
 For reference consider this example:
 
-::
+.. code:: haskell
 
  head xs = case xs of
     [] -> {-# LIKELY 0 #-} error "Empty list"
@@ -86,7 +86,8 @@ Data type behaviour derives from the case behavior.
 
 Given by example, the syntax for a data declaration is as follows:
 
-::
+.. code:: haskell
+
  data Foo
    = {-# LIKELY <NUM> #-} Bar
    | {-# LIKELY <NUM> #-} Baz
@@ -113,7 +114,8 @@ This will provide a more reliable alternative which will remain stable between v
 
 To give some examples:
 
-::
+.. code:: haskell
+
  f x = case x of
   Just v  -> {-# LIKELY 1 #-} e1
   Nothing -> {-# LIKELY 0 #-} e2
@@ -124,7 +126,8 @@ We can avoid inlining e2 knowing it is rarely called, reducing code size and
 For more low level optimization we always want control flow for the hot path to be
 linear. This means given the code below:
 
-::
+.. code:: haskell
+
  f x = case x of
          C1 -> {-# LIKELY 1 #-} e1
          C2 -> {-# LIKELY 0 #-} e2
@@ -132,6 +135,7 @@ linear. This means given the code below:
 We want assembly (simplified to just the control flow) to look like this:
 
 ::
+
  f:
   <if x == C2> goto e2:
  e1:
