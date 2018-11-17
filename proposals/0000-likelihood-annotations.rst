@@ -99,6 +99,9 @@ the default likelihoods given by the information in the definition.
 When pattern matching on such an expression using other means the likelihood information
 might be considered by the compiler but no guarantees are given.
 
+Pattern matches using nested arguments, function definitions by pattern matching
+and guards are excluded for now for two reasons. It is not always obvious how to assign weights from the
+overall pattern to the individual Constructors. And it needlessly increases implementation complexity.
 
 Effect and Interactions
 -----------------------
@@ -107,6 +110,37 @@ This makes it possible to have GHC optimize better for hot code paths.
 
 Currently high performance code tends to vary things like constructor order manually for maximal performance.
 This will provide a more reliable alternative which will remain stable between versions.
+
+To give some examples:
+
+::
+ f x = case x of
+  Just v  -> {-# LIKELY 1 #-} e1
+  Nothing -> {-# LIKELY 0 #-} e2
+
+We can avoid inlining e2 knowing it is rarely called, reducing code size and
+ making f itself a better inlineing candidate.
+
+For more low level optimization we always want control flow for the hot path to be
+linear. This means given the code below:
+
+::
+ f x = case x of
+         C1 -> {-# LIKELY 1 #-} e1
+         C2 -> {-# LIKELY 0 #-} e2
+
+We want assemby (simplified to just the control flow) to look like this:
+
+::
+ f:
+  <if x == C2> goto e2:
+ e1:
+  <e1_code>
+ e2:
+  <e2_code>
+
+Currently if we get this layout depends implicitly on the order of constructors and the GHC
+version. With the pragma GHC will try to generate this layout when beneficial instead.
 
 
 Costs and Drawbacks
