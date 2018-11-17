@@ -34,7 +34,7 @@ The same logic applies to many other cases. For example Lists are rarely empty.
 A programmer has this information but no way to communicate this to the compiler.
 
 Communicating this kind of information can allow optimization passes to produce
-faster code. In particular potential gains include:
+faster code. In particular, potential gains include:
  * Avoid inlining into unlikely case alternatives.
  * Produce better code layout.
  * Better register allocation.
@@ -42,11 +42,11 @@ faster code. In particular potential gains include:
 Proposed Change Specification
 -----------------------------
 
-We propose a new Pramgma: ``{-# LIKELY <NUM> #-}``
+We propose a new Pragma: ``{-# LIKELY <NUM> #-}``
 
 This will be useable in two kinds of places with different semantics:
  - Simple case expressions.
- - Data type definitions of Sum Types.
+ - Data type declarations for Sum Types.
 
 Uses where the requirements are not satisfied will result in warnings similar to
 the ones from bad UNPACK pragmas. Likelihood values must be >= 0.
@@ -58,19 +58,19 @@ Simple case expressions are case expressions which:
  - Don't use guards.
  - Only match on ADTs or GADT.
 
-Given a simple case expression with n alternatives [A1 .. An],
-with likelihoods [L1 .. Ln], Ls = sum [L1 .. Ln] GHC will optimize code under the assumption that
-the chance for each alternative to be taken is L1/Ls.
+Given a simple case expression of n alternatives ``[A1 .. An]``,
+with likelihoods ``[L1 .. Ln]`` GHC will optimize code under the assumption that
+the chance for the i-th alternative to be taken is ``Li / sum [L1 .. Ln].``
 
 In other words alternatives with likelihood zero are assumed to be almost never taken. (But still correct IF taken!)
 For alternatives with Li > 0 the likelihood gives the relative frequency of alternatives.
 
-We give an likelihood by <Pattern> -> <Pragma> <rhs>. See example below.
+We give a likelihood by <Pattern> -> <Pragma> <rhs>. See example below.
 
-If a case has no annotations assumptions about likelihoods are up to the implementation.
-If a case has alternatives with and without likelihood information the compiler
-will give a warning and the unannotated alternatives are given an implementation dependent likelihood.
-If a case doesn't match all possible constructors the unmachted constructors are assumed to have likelihood zero.
+If a case has no annotations, assumptions about likelihoods are up to the implementation.
+If a case has alternatives with and without likelihood information then the compiler
+will give a warning, and the unannotated alternatives are given an implementation dependent likelihood.
+If a case doesn't match all possible constructors, then the unmatched constructors are assumed to have likelihood zero.
 
 For reference consider this example:
 
@@ -82,26 +82,26 @@ For reference consider this example:
 
 Here we assume the error case is never taken. Further we assume that the second alternative is always taken.
 
-Data types behaviour derive from the case behavior.
+Data type behaviour derives from the case behavior.
 
-The syntax for data definition by example is as follows:
+Given by example, the syntax for a data declaration is as follows:
 
 ::
  data Foo
    = {-# LIKELY <NUM> #-} Bar
    | {-# LIKELY <NUM> #-} Baz
 
-If likelihood information for data types is given it must be given for all constructors.
+If likelihood information for data types is given, it must be given for all constructors.
 
 When pattern matching on an expression of such a type using a simple case expression
-the default likelihoods given by the information in the definition.
+the default likelihoods are given by the information in the data declaration.
 
 When pattern matching on such an expression using other means the likelihood information
 might be considered by the compiler but no guarantees are given.
 
 Pattern matches using nested arguments, function definitions by pattern matching
-and guards are excluded for now for two reasons. It is not always obvious how to assign weights from the
-overall pattern to the individual Constructors. And it needlessly increases implementation complexity.
+and guards are excluded for now for two reasons: It is not always obvious how to assign weights from the
+overall pattern to the individual Constructors, and it needlessly increases implementation complexity.
 
 Effect and Interactions
 -----------------------
@@ -119,7 +119,7 @@ To give some examples:
   Nothing -> {-# LIKELY 0 #-} e2
 
 We can avoid inlining e2 knowing it is rarely called, reducing code size and
- making f itself a better inlineing candidate.
+ making f itself a better inlining candidate.
 
 For more low level optimization we always want control flow for the hot path to be
 linear. This means given the code below:
@@ -129,7 +129,7 @@ linear. This means given the code below:
          C1 -> {-# LIKELY 1 #-} e1
          C2 -> {-# LIKELY 0 #-} e2
 
-We want assemby (simplified to just the control flow) to look like this:
+We want assembly (simplified to just the control flow) to look like this:
 
 ::
  f:
@@ -139,15 +139,17 @@ We want assemby (simplified to just the control flow) to look like this:
  e2:
   <e2_code>
 
-Currently if we get this layout depends implicitly on the order of constructors and the GHC
-version. With the pragma GHC will try to generate this layout when beneficial instead.
+Currently the order of e1 and e2 is determined implicitly by the order of constructors
+and the used GHC version.
+
+With the pragma, GHC will try to generate this layout when beneficial.
 
 
 Costs and Drawbacks
 -------------------
 This comes with an increase in compiler complexity as one would expect.
 
-I don't expect negative impacts on existing code
+I don't expect any negative impact on existing code
 or users not making use of this feature.
 
 
