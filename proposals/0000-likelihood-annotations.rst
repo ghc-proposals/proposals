@@ -1,4 +1,4 @@
-Add Likelyhood Annotations
+Add Likelihood Annotations
 ==============
 
 .. proposal-number:: _.
@@ -49,7 +49,7 @@ This will be useable in two kinds of places with different semantics:
  - Data type definitions of Sum Types.
 
 Uses where the requirements are not satisfied will result in warnings similar to
-the ones from bad UNPACK pragmas. Likelyhood values must be >= 0.
+the ones from bad UNPACK pragmas. Likelihood values must be >= 0.
 
 Case expressions:
 
@@ -59,18 +59,18 @@ Simple case expressions are case expressions which:
  - Only match on ADTs or GADT.
 
 Given a simple case expression with n alternatives [A1 .. An],
-with likelyhoods [L1 .. Ln], Ls = sum [L1 .. Ln] GHC will optimize code under the assumption that
+with likelihoods [L1 .. Ln], Ls = sum [L1 .. Ln] GHC will optimize code under the assumption that
 the chance for each alternative to be taken is L1/Ls.
 
-In other words alternatives with likelyhood zero are assumed to be almost never taken. (But still correct IF taken!)
-For alternatives with Li > 0 the likelyhood gives the relative frequency of alternatives.
+In other words alternatives with likelihood zero are assumed to be almost never taken. (But still correct IF taken!)
+For alternatives with Li > 0 the likelihood gives the relative frequency of alternatives.
 
-We give an likelyhood by <Pattern> -> <Pragma> <rhs>. See example below.
+We give an likelihood by <Pattern> -> <Pragma> <rhs>. See example below.
 
-If a case has no annotations assumptions about likelyhoods are up to the implementation.
-If a case has alternatives with and without likelyhood information the compiler
-will give a warning and the unannotated alternatives are given an implementation dependent likelyhood.
-If a case doesn't match all possible constructors the unmachted constructors are assumed to have likelyhood zero.
+If a case has no annotations assumptions about likelihoods are up to the implementation.
+If a case has alternatives with and without likelihood information the compiler
+will give a warning and the unannotated alternatives are given an implementation dependent likelihood.
+If a case doesn't match all possible constructors the unmachted constructors are assumed to have likelihood zero.
 
 For reference consider this example:
 
@@ -91,12 +91,12 @@ The syntax for data definition by example is as follows:
    = {-# LIKELY <NUM> #-} Bar
    | {-# LIKELY <NUM> #-} Baz
 
-If likelyhood information for data types is given it must be given for all constructors.
+If likelihood information for data types is given it must be given for all constructors.
 
 When pattern matching on an expression of such a type using a simple case expression
-the default likelyhoods given by the information in the definition.
+the default likelihoods given by the information in the definition.
 
-When pattern matching on such an expression using other means the likelyhood information
+When pattern matching on such an expression using other means the likelihood information
 might be considered by the compiler but no guarantees are given.
 
 
