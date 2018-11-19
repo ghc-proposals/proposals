@@ -39,6 +39,9 @@ faster code. In particular, potential gains include:
  * Produce better code layout.
  * Better register allocation.
 
+This would also bring us closer to profile guided optimization (PGO).
+A lot of the required backend work for this is also required for PGO.
+
 Proposed Change Specification
 -----------------------------
 
@@ -92,10 +95,16 @@ Given by example, the syntax for a data declaration is as follows:
    = {-# LIKELY <NUM> #-} Bar
    | {-# LIKELY <NUM> #-} Baz
 
+ data Foo where
+   {-# LIKELY <NUM> #-} Bar :: Foo
+   {-# LIKELY <NUM> #-} Baz :: Foo
+
 If likelihood information for data types is given, it must be given for all constructors.
 
-When pattern matching on an expression of such a type using a simple case expression
-the default likelihoods are given by the information in the data declaration.
+When pattern matching on an expression of such a type using a simple case expression:
+The default likelihoods are given by the information in the data declaration, unless
+any explicit likelihoods are given in which case the information form the data declaration
+won't be used.
 
 When pattern matching on such an expression using other means the likelihood information
 might be considered by the compiler but no guarantees are given.
