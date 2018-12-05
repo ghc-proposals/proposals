@@ -47,8 +47,9 @@ Proposed Change Specification
 
 We propose a new Pragma: ``{-# LIKELY <NUM> #-}``
 
-This will be useable in two kinds of places with different semantics:
+This will be useable in three places:
  - Simple case expressions.
+ - If expressions.
  - Data type declarations for Sum Types.
 
 Uses where the requirements are not satisfied will result in warnings similar to
@@ -65,10 +66,12 @@ Given a simple case expression of n alternatives ``[A1 .. An]``,
 with likelihoods ``[L1 .. Ln]`` GHC will optimize code under the assumption that
 the chance for the i-th alternative to be taken is ``Li / sum [L1 .. Ln].``
 
-In other words alternatives with likelihood zero are assumed to be almost never taken. (But still correct IF taken!)
+Alternatives with likelihood zero are assumed to be never taken.
+However the compiler will still preserve the semantics of this alternative
+should it be taken at runtime.
 For alternatives with Li > 0 the likelihood gives the relative frequency of alternatives.
 
-We give a likelihood by <Pattern> -> <Pragma> <rhs>. See example below.
+We give a likelihood by <Pattern> -> <Pragma> <rhs>. See examples below.
 
 If a case has no annotations, assumptions about likelihoods are up to the implementation.
 If a case has alternatives with and without likelihood information then the compiler
@@ -84,6 +87,24 @@ For reference consider this example:
     (x:_) -> {-# LIKELY 1 #-} x
 
 Here we assume the error case is never taken. Further we assume that the second alternative is always taken.
+
+If expressions can be annotated as shown below.
+
+.. code:: haskell
+
+ if cond then {-# LIKELY 2000 #-}
+          e1
+         else {-# LIKELY 1000 #-}
+          e2
+
+This is equivalent to the following case:
+
+.. code:: haskell
+
+ case cond of
+  True -> {-# LIKELY 2000 #-} e1
+  False -> {-# LIKELY 1000 #-} e2
+
 
 Data type behaviour derives from the case behavior.
 
@@ -157,14 +178,17 @@ and the used GHC version.
 
 With the pragma, GHC will try to generate this layout when beneficial.
 
+A proof of concept implementation currently nets a ~3% speedup on nofib, along with a
+2% increase in compile time.
 
 Costs and Drawbacks
 -------------------
-This comes with an increase in compiler complexity as one would expect.
+This comes with an increase in compiler complexity and a small compile time overhead as one would expect.
 
-I don't expect any negative impact on existing code
-or users not making use of this feature.
+I don't expect any negative impact on existing code.
 
+Users not making explicit use of this feature could still gain performance benefits if libraries define
+default weights.
 
 Alternatives
 ------------
@@ -173,10 +197,21 @@ None I know of.
 Unresolved Questions
 --------------------
 
-I think the handling of partial or missing information here is reasonable.
+How weights should be given exactly, in particular:
 
-However people often disagree what is reasonable so give feedback if you disagree with these.
+ * Should weights be given only as integers, or should rationals be accepted.
+   Currently favouring integers.
+
+ * Should weights be given in the Int64 range and mapped to positive numbers.
+   For example by a given weight w being interpreted as the value e^w.
+
+   This would make it quite easy to express relative order or add weighted cases on both ends of the curve.
+   However it makes it a lot harder to express exact relations between multiple branches.
+
+Give feedback if you have ideas on how to improve this further.
 
 Implementation Plan
 -------------------
 I would implement this.
+
+Implementation is work in progress, the current state is available here: https://phabricator.haskell.org/D4327
