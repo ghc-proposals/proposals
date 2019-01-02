@@ -47,29 +47,34 @@ Proposed Change Specification
 
 We propose a new Pragma: ``{-# LIKELY <NUM> #-}``
 
-This will be useable in three places:
+This will be useable in the following constructs:
  - Simple case expressions.
+ - Simple function bindings.
  - If expressions.
  - Data type declarations for Sum Types.
 
 Uses where the requirements are not satisfied will result in warnings similar to
 the ones from bad UNPACK pragmas. Likelihood values must be >= 0.
 
-Case expressions:
+Weight semantics
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Given a simple branching expression with n branches ``[A1 .. An]``,
+with likelihoods ``[L1 .. Ln]`` GHC will optimize code under the assumption that
+the chance for the i-th branch to be taken is ``Li / sum [L1 .. Ln].``
+
+In other words likelihood gives the relative frequency of branches.
+
+While it's possible to give weights of zero the code covered by such weights
+is not viewed as dead code. Instead the compiler will preserve the semantics of
+this branch while trying to minimize impact of this branch on other branches.
+
+Simple case expressions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Simple case expressions are case expressions which:
  - Don't contain nested patterns.
  - Don't use guards.
  - Only match on ADTs or GADT.
-
-Given a simple case expression of n alternatives ``[A1 .. An]``,
-with likelihoods ``[L1 .. Ln]`` GHC will optimize code under the assumption that
-the chance for the i-th alternative to be taken is ``Li / sum [L1 .. Ln].``
-
-Alternatives with likelihood zero are assumed to be never taken.
-However the compiler will still preserve the semantics of this alternative
-should it be taken at runtime.
-For alternatives with Li > 0 the likelihood gives the relative frequency of alternatives.
 
 We give a likelihood by <Pattern> -> <Pragma> <rhs>. See examples below.
 
@@ -78,15 +83,18 @@ If a case has alternatives with and without likelihood information then the comp
 will give a warning, and the unannotated alternatives are given an implementation dependent likelihood.
 If a case doesn't match all possible constructors, then the unmatched constructors are assumed to have likelihood zero.
 
-For reference consider this example:
+For a simple example take this code:
 
 .. code:: haskell
 
  head xs = case xs of
-    [] -> {-# LIKELY 0 #-} error "Empty list"
+    []    -> {-# LIKELY 0 #-} error "Empty list"
     (x:_) -> {-# LIKELY 1 #-} x
 
-Here we assume the error case is never taken. Further we assume that the second alternative is always taken.
+Here we tell the compiler that we assume the error case is never taken, and the second alternative is always taken.
+
+If expressions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If expressions can be annotated as shown below.
 
@@ -105,8 +113,27 @@ This is equivalent to the following case:
   True -> {-# LIKELY 2000 #-} e1
   False -> {-# LIKELY 1000 #-} e2
 
+Simple function bindings.
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Data type behaviour derives from the case behavior.
+These are functions matching on a single argument, analog to simple case expressions.
+
+Their behaviour is identical to writing the function using a case instead of a binding pattern match.
+
+Syntax example:
+
+.. code:: haskell
+
+ head []    = {-# LIKELY 0 #-} error "Empty list"
+ head (x:_) = {-# LIKELY 1 #-} x
+
+
+
+
+Default weights for Constructors
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Data type behaviour derives from the case behaviour.
 
 Given by example, the syntax for a data declaration is as follows:
 
@@ -130,19 +157,25 @@ won't be used.
 When pattern matching on such an expression using other means the likelihood information
 might be considered by the compiler but no guarantees are given.
 
-Pattern matches using nested arguments, function definitions by pattern matching
-and guards are excluded for now for two reasons: It is not always obvious how to assign weights from the
-overall pattern to the individual Constructors, and it needlessly increases implementation complexity.
-
 Effect and Interactions
 -----------------------
+
+Intended Effects.
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This makes it possible to have GHC optimize better for hot code paths.
 
 Currently high performance code tends to vary things like constructor order manually for maximal performance.
 This will provide a more reliable alternative which will remain stable between versions.
 
+A proof of concept implementation currently nets a ~3% speedup on nofib, along with a
+2% increase in compile time, however only backend optimizations are implemented in this
+prototype so the potential is greater still.
+
 To give some examples:
+
+Inlining
+.................
 
 .. code:: haskell
 
@@ -152,6 +185,9 @@ To give some examples:
 
 We can avoid inlining e2 knowing it is rarely called, reducing code size and
  making f itself a better inlining candidate.
+
+Backend code
+.................
 
 For more low level optimization we always want control flow for the hot path to be
 linear. This means given the code below:
@@ -178,8 +214,19 @@ and the used GHC version.
 
 With the pragma, GHC will try to generate this layout when beneficial.
 
-A proof of concept implementation currently nets a ~3% speedup on nofib, along with a
-2% increase in compile time.
+Unsupported Interactions.
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+There is no plan to add support for weights on other constructs than described above.
+This includes, but is not limited to:
+
+- Guards
+- Complex Patterns (Nested Constructors, Multiple arguments)
+- Rebindable Syntax
+- Pattern Synonyms
+- View Patterns
+
+The issue with most of these is that there is no obvious way how weights should work with these.
+
 
 Costs and Drawbacks
 -------------------
