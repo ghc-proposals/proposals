@@ -27,6 +27,7 @@ Proposal title
 .. header:: This proposal is `discussed at this pull request <https://github.com/ghc-proposals/ghc-proposals/pull/0>`_.
             **After creating the pull request, edit this file again, update the
             number in the link, and delete this bold sentence.**
+.. sectnum::
 .. contents::
 
 Here you should write a short abstract motivating and briefly summarizing the proposed change.
@@ -93,7 +94,7 @@ during the PR discussion.
 
 Costs and Drawbacks
 -------------------
-Give an estimate on development and maintenance costs. List how this effects
+Give an estimate on development and maintenance costs. List how this affects
 learnability of the language for novice users. Define and list any remaining
 drawbacks that cannot be resolved.
 
